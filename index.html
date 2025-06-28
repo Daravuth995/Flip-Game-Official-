@@ -711,49 +711,56 @@
   </div>
 
   <script>
+    const restrictionAPI = 'https://script.google.com/macros/s/AKfycbzGK78xCLxDVfe2Go37JLVtYz9JOBg7-MulHscxkSnv8-48FoDI4bXyLiztWUyvgR3Clw/exec';
+
     const endpoint = 'https://script.google.com/macros/s/AKfycbxKSDSZm-iM9dTqT_noZ_EC1DV-lFcIinJGt-2sIdBCcWbfahyx_8uOKsEbenaeQMKa/exec';
     let studentID = '', studentPassword = '';
     let playCount = 0;
     const maxPlaysPerRound = 1;
 
     function login() {
-      const id = document.getElementById('studentId').value.trim();
-      const pass = document.getElementById('studentPassword').value.trim();
-      if (!id || !pass) return alert('Please enter both ID and password.');
+  const id = document.getElementById('studentId').value.trim();
+  const pass = document.getElementById('studentPassword').value.trim();
+  if (!id || !pass) return alert('Please enter both ID and password.');
 
-      // Show loading animation
-      document.getElementById('loginLoading').classList.add('active');
+  // Show loading animation
+  document.getElementById('loginLoading').classList.add('active');
 
-      const formData = new FormData();
-      formData.append("action", "login");
-      formData.append("id", id);
-      formData.append("password", pass);
+  const formData = new FormData();
+  formData.append("action", "login");
+  formData.append("id", id);
+  formData.append("password", pass);
 
-      fetch(endpoint, { method: "POST", body: formData })
-        .then(res => res.json())
-        .then(data => {
-          document.getElementById('loginLoading').classList.remove('active');
-          
-          if (data.success) {
-            studentID = id;
-            studentPassword = pass;
-            document.getElementById('studentName').innerText = data.name;
-            animateNumberChange('studentPoints', 0, data.points);
-            
-            document.getElementById('loginBox').classList.add('hidden');
-            document.getElementById('gameBox').classList.remove('hidden');
-showAgreementModal(); // <- Shows the agreement popup
-            loadCards();
-            fetchPrizeBoard();
-          } else {
-            document.getElementById('loginMsg').innerText = data.message;
-          }
-        })
-        .catch(() => {
-          document.getElementById('loginLoading').classList.remove('active');
-          document.getElementById('loginMsg').innerText = "Error connecting to server.";
-        });
-    }
+  fetch(endpoint, { method: "POST", body: formData })
+    .then(res => res.json())
+    .then(data => {
+      document.getElementById('loginLoading').classList.remove('active');
+
+      if (data.success) {
+        studentID = id;
+        studentPassword = pass;
+        document.getElementById('studentName').innerText = data.name;
+        animateNumberChange('studentPoints', 0, data.points);
+
+        document.getElementById('loginBox').classList.add('hidden');
+        document.getElementById('gameBox').classList.remove('hidden');
+        showAgreementModal();
+        loadCards();
+        fetchPrizeBoard();
+
+        // Restriction check (calls separate restrictionAPI)
+        checkRestrictionStatus(id);
+
+      } else {
+        document.getElementById('loginMsg').innerText = data.message;
+      }
+    })
+    .catch(() => {
+      document.getElementById('loginLoading').classList.remove('active');
+      document.getElementById('loginMsg').innerText = "Error connecting to server.";
+    });
+}
+
 
     function animateNumberChange(elementId, start, end) {
       const element = document.getElementById(elementId);
@@ -1019,6 +1026,57 @@ showAgreementModal(); // <- Shows the agreement popup
   function showAgreementModal() {
     document.getElementById('agreementModal').style.display = 'flex';
   }
+  // Call the isolated restriction API to check if user is restricted
+function checkRestrictionStatus(studentId) {
+  fetch(restrictionAPI, {
+    method: "POST",
+    body: new URLSearchParams({
+      action: "getRestrictionMessage",
+      studentId
+    })
+  })
+    .then(res => res.json())
+    .then(data => {
+      if (data && data.message && data.message.trim() !== "") {
+        showRestrictionOverlay(data.message);
+      }
+    })
+    .catch(() => {
+      // Optionally handle fetch error (show a default restriction message or do nothing)
+    });
+}
+
+function showRestrictionOverlay(msg) {
+  var overlay = document.getElementById('restrictionOverlay');
+  var msgBox = document.getElementById('restrictionMsgBox');
+  msgBox.innerHTML = msg || 'Access restricted by administrator.';
+  overlay.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
 </script>
+<div id="restrictionOverlay" style="
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:10000;
+  background: rgba(10, 25, 47, 0.72);
+  backdrop-filter: blur(8px);
+  align-items: center;
+  justify-content: center;
+">
+  <div id="restrictionMsgBox" style="
+    background: rgba(255,255,255,0.15);
+    border-radius: 20px;
+    padding: 32px 18px;
+    color: #fff;
+    font-size: 1.2rem;
+    font-family: 'Poppins',sans-serif;
+    max-width: 90vw;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.34);
+    text-align: center;
+    border: 1.5px solid rgba(255,255,255,0.2);
+  "></div>
+</div>
 </body>
 </html>
